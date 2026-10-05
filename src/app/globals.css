@@ -1,0 +1,83 @@
+@import 'tailwindcss';
+
+/*
+ * Semantic color tokens. Components use these (bg-surface, text-muted, …) instead of raw
+ * palette colors, so light/dark switching happens here in one place, following the OS setting.
+ */
+:root {
+  color-scheme: light dark;
+
+  --background: #fafafa;
+  --foreground: #18181b;
+  --surface: #ffffff;
+  --surface-muted: #f4f4f5;
+  --muted: #52525b;
+  --border: #e4e4e7;
+  --input: #71717a;
+  --ring: #18181b;
+  --primary: #18181b;
+  --primary-hover: #3f3f46;
+  --primary-foreground: #ffffff;
+  --danger: #b91c1c;
+  --danger-surface: #fef2f2;
+  --danger-border: #fca5a5;
+  --danger-solid: #b91c1c;
+  --danger-solid-hover: #991b1b;
+  --danger-solid-foreground: #ffffff;
+  --codeblock: #18181b;
+  --codeblock-foreground: #f4f4f5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #09090b;
+    --foreground: #f4f4f5;
+    --surface: #18181b;
+    --surface-muted: #27272a;
+    --muted: #a1a1aa;
+    --border: #3f3f46;
+    --input: #71717a;
+    --ring: #f4f4f5;
+    --primary: #f4f4f5;
+    --primary-hover: #d4d4d8;
+    --primary-foreground: #18181b;
+    --danger: #fca5a5;
+    --danger-surface: #450a0a;
+    --danger-border: #991b1b;
+    --danger-solid: #f87171;
+    --danger-solid-hover: #fca5a5;
+    --danger-solid-foreground: #18181b;
+    --codeblock: #09090b;
+    --codeblock-foreground: #f4f4f5;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-danger: var(--danger);
+  --color-danger-surface: var(--danger-surface);
+  --color-danger-border: var(--danger-border);
+  --color-danger-solid: var(--danger-solid);
+  --color-danger-solid-hover: var(--danger-solid-hover);
+  --color-danger-solid-foreground: var(--danger-solid-foreground);
+  --color-codeblock: var(--codeblock);
+  --color-codeblock-foreground: var(--codeblock-foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}

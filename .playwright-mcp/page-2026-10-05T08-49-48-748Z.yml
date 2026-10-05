@@ -1,0 +1,55 @@
+- generic [active] [ref=f8e1]:
+    - banner [ref=f8e2]:
+        - generic [ref=f8e3]:
+            - link "NextNotes" [ref=f8e4] [cursor=pointer]:
+                - /url: /dashboard
+            - generic [ref=f8e8]:
+                - paragraph [ref=f8e9]:
+                    - generic [ref=f8e10]: Signed in as
+                    - text: QA One
+                - button "Log out" [ref=f8e12]
+    - main [ref=f8e13]:
+        - heading "New Note" [level=1] [ref=f8e14]
+        - generic [ref=f8e15]:
+            - generic [ref=f8e16]:
+                - generic [ref=f8e17]: Title
+                - textbox "Title" [ref=f8e18]
+            - generic [ref=f8e19]:
+                - generic [ref=f8e20]: Content
+                - generic [ref=f8e21]:
+                    - generic [ref=f8e22]:
+                        - toolbar "Formatting" [ref=f8e23]:
+                            - group "History" [ref=f8e24]:
+                                - button "Undo" [disabled] [ref=f8e25]
+                                - button "Redo" [disabled] [ref=f8e30]
+                            - group "Text style" [ref=f8e35]:
+                                - button "Normal text" [disabled] [ref=f8e36]:
+                                    - generic [aria-hidden] [ref=f8e38]: Text
+                                - button "Heading 1" [disabled] [ref=f8e39]:
+                                    - generic [aria-hidden] [ref=f8e41]: H1
+                                - button "Heading 2" [disabled] [ref=f8e42]:
+                                    - generic [aria-hidden] [ref=f8e44]: H2
+                                - button "Heading 3" [disabled] [ref=f8e45]:
+                                    - generic [aria-hidden] [ref=f8e47]: H3
+                            - group "Formatting" [ref=f8e48]:
+                                - button "Bold" [disabled] [ref=f8e49]
+                                - button "Italic" [disabled] [ref=f8e53]
+                                - button "Inline code" [disabled] [ref=f8e57]
+                            - group "Blocks" [ref=f8e62]:
+                                - button "Bullet list" [disabled] [ref=f8e63]
+                                - button "Code block" [disabled] [ref=f8e66]
+                                - button "Divider" [disabled] [ref=f8e72]
+                        - textbox "Content" [ref=f8e76]:
+                            - paragraph [ref=f8e77]
+                    - paragraph [ref=f8e78]: 'Markdown shortcuts work too: # heading, - list, ``` code block, --- divider, **bold**, *italic*, `code`.'
+            - generic [ref=f8e79]:
+                - checkbox "Share publicly" [ref=f8e80]
+                - generic [ref=f8e81]:
+                    - text: Share publicly
+                    - paragraph [ref=f8e82]: Anyone with the link can read this note without signing in. They can't edit or delete it. Turning this off disables the link immediately; turning it on again creates a new link.
+            - generic [ref=f8e83]:
+                - link "Cancel" [ref=f8e84] [cursor=pointer]:
+                    - /url: /dashboard
+                - button "Create note" [ref=f8e85]
+    - button "Open Next.js Dev Tools" [ref=f8e91] [cursor=pointer]
+    - alert [ref=f8e95]

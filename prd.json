@@ -1,0 +1,292 @@
+[
+  {
+    "category": "database",
+    "description": "SQLite connection and schema (better-auth tables + notes)",
+    "steps": [
+      "src/lib/open-database.ts: openDatabase(file) creates the directory, sets pragmas journal_mode = WAL, foreign_keys = ON, busy_timeout",
+      "Idempotent schema: better-auth user, session, account, verification tables (SPEC §4)",
+      "notes table: id, user_id (FK ON DELETE CASCADE), title, content CHECK (json_valid(content)), share_token UNIQUE, shared_at, created_at, updated_at",
+      "Index idx_notes_user_updated ON notes(user_id, updated_at DESC)",
+      "src/lib/db.ts: single shared connection at DB_PATH, reused across dev hot reloads, in-memory during next build"
+    ],
+    "passes": true
+  },
+  {
+    "category": "database",
+    "description": "Notes data-access layer with ownership checks (src/lib/notes-repo.ts)",
+    "steps": [
+      "createNote(userId, input) in a transaction with the per-user cap (MAX_NOTES_PER_USER)",
+      "listNotes(userId) newest first by updated_at; getNote(userId, id)",
+      "updateNote(userId, id, input) sets updated_at; deleteNote(userId, id)",
+      "Every query filters WHERE id = ? AND user_id = ?; missing and not-owned notes are indistinguishable",
+      "Validate id format before querying; prepared statements with bound params only"
+    ],
+    "passes": true
+  },
+  {
+    "category": "database",
+    "description": "Public sharing in the data-access layer",
+    "steps": [
+      "Share token from nanoid(32) (CSPRNG, never derived from ids or timestamps)",
+      "Turning sharing on issues a NEW token; staying shared keeps it; turning off sets share_token and shared_at to NULL",
+      "getSharedNote(token) validates token format first and selects only title, content, updated_at"
+    ],
+    "passes": true
+  },
+  {
+    "category": "auth",
+    "description": "Configure better-auth (src/lib/auth.ts)",
+    "steps": [
+      "emailAndPassword only, minPasswordLength 8, maxPasswordLength 128, autoSignIn false (no account enumeration on sign-up)",
+      "Session expiresIn 7 days, updateAge 1 day; cookies HttpOnly, SameSite=Lax, Secure in production",
+      "trustedOrigins = origin of BETTER_AUTH_URL only",
+      "Built-in in-memory rate limiter; 5/min on /sign-in/email and /sign-up/email",
+      "Before-hook validates and sanitizes name/email/image via src/lib/user-input.ts",
+      "nextCookies() plugin last; handler at src/app/api/auth/[...all]/route.ts"
+    ],
+    "passes": true
+  },
+  {
+    "category": "auth",
+    "description": "Environment validation",
+    "steps": [
+      "src/lib/env.ts validates BETTER_AUTH_SECRET (32+ chars), BETTER_AUTH_URL, DB_PATH",
+      "Production refuses to start when any is missing (src/instrumentation.ts); development uses local defaults; next build exempt",
+      "Error messages name variables only, never values",
+      ".env.example documents every variable"
+    ],
+    "passes": true
+  },
+  {
+    "category": "auth",
+    "description": "Server-side session helpers (src/lib/session.ts)",
+    "steps": [
+      "getSession() memoized per request via React cache + auth.api.getSession()",
+      "requireSession() redirects to /auth when signed out; called by every protected page and server action",
+      "getCurrentUser() returns only name and email to the UI"
+    ],
+    "passes": true
+  },
+  {
+    "category": "ui",
+    "description": "Auth page with sign-in and sign-up modes (/auth)",
+    "steps": [
+      "src/app/auth/page.tsx with ?mode=sign-in|sign-up (parseAuthMode), /login and /register redirect to it",
+      "auth-form.tsx: name/email/password with native validation hints from auth-limits.ts",
+      "Generic error 'Invalid email or password.'; generic message for duplicate sign-up",
+      "Signed-in users are redirected to /dashboard; successful auth lands on /dashboard"
+    ],
+    "passes": true
+  },
+  {
+    "category": "ui",
+    "description": "Site header and logout",
+    "steps": [
+      "src/components/site-header.tsx shows app name, signed-in user's name and Log out",
+      "signOutAction (src/app/auth/actions.ts) revokes the session and redirects to /auth"
+    ],
+    "passes": true
+  },
+  {
+    "category": "ui",
+    "description": "Dashboard with the user's notes (/dashboard)",
+    "steps": [
+      "Server component protected by requireSession(), reads listNotes() directly",
+      "Each note links to /notes/[id] with title, local updated time and a 'Shared' badge",
+      "Empty state with a New Note call to action"
+    ],
+    "passes": true
+  },
+  {
+    "category": "ui",
+    "description": "TipTap editor restricted to the SPEC §10 allowlist",
+    "steps": [
+      "src/lib/editor-extensions.ts: StarterKit with heading levels 1-3; blockquote, orderedList, strike, underline, link, hardBreak disabled",
+      "src/components/rich-text-editor.tsx serializes TipTap JSON into a hidden form field",
+      "src/components/editor-toolbar.tsx: undo/redo, paragraph, H1-H3, bold, italic, inline code, bullet list, code block, divider, with active states"
+    ],
+    "passes": true
+  },
+  {
+    "category": "actions",
+    "description": "Server-side validation of note input",
+    "steps": [
+      "src/lib/note-content.ts: zod .strict() allowlist of node/mark types plus the editor's ProseMirror schema check; 500 KB cap",
+      "src/app/notes/note-form-input.ts: title trimmed, NFC-normalized, 1-200 chars, no control or bidi characters; share checkbox is 'on' or absent",
+      "Invalid input returns field errors and echoes the submitted values"
+    ],
+    "passes": true
+  },
+  {
+    "category": "actions",
+    "description": "Note server actions (src/app/notes/actions.ts)",
+    "steps": [
+      "createNoteAction, updateNoteAction(id), deleteNoteAction(id) each call requireSession() first",
+      "User id always comes from the session, never from the form",
+      "Generic client errors; logs contain ids only, never title or content",
+      "Redirect to the note after save, to /dashboard after delete"
+    ],
+    "passes": true
+  },
+  {
+    "category": "ui",
+    "description": "Create, view, edit and delete note pages",
+    "steps": [
+      "/notes/new and /notes/[id]/edit use the shared note-form.tsx (title, editor, 'Share publicly' checkbox)",
+      "/notes/[id] renders content read-only via note-renderer.tsx, shows last updated time, Edit and Delete",
+      "Delete asks for confirmation in a <dialog> before calling deleteNoteAction",
+      "Missing and not-owned notes return the same 404"
+    ],
+    "passes": true
+  },
+  {
+    "category": "ui",
+    "description": "Public shared note page (/s/[token])",
+    "steps": [
+      "Server-rendered, no login; shows only title, content and updated time",
+      "Unknown, malformed and revoked tokens return the same 404",
+      "Headers for /s/*: Referrer-Policy no-referrer, X-Robots-Tag noindex, nofollow, Cache-Control no-store; robots meta noindex",
+      "Owner's note page shows the public link with a copy button (copy-link-field.tsx)"
+    ],
+    "passes": true
+  },
+  {
+    "category": "testing",
+    "description": "Vitest unit tests",
+    "steps": [
+      "vitest.config.mts: Node environment, tsconfig paths, server-only stubbed; pnpm test / pnpm test:watch",
+      "notes-repo: cross-user get/update/delete/share return not found; share/unshare/reshare token lifecycle",
+      "note-content and note-form-input: allowlist, oversize and malformed input rejected",
+      "actions (mocked session/repo), auth (real better-auth on in-memory DB), env, session, share-url"
+    ],
+    "passes": true
+  },
+  {
+    "category": "api",
+    "description": "REST Route Handlers for notes (SPEC §7)",
+    "steps": [
+      "GET/POST src/app/api/notes/route.ts; GET/PATCH/DELETE src/app/api/notes/[id]/route.ts; export const runtime = 'nodejs'",
+      "No session → 401; missing or not-owned note → identical 404 body",
+      "zod .strict() bodies (title ≤ 200, content via parseNoteContent); body ≤ 1 MB → 413",
+      "All data access through src/lib/notes-repo.ts with the session user id",
+      "Vitest tests for every handler, including cross-user access"
+    ],
+    "passes": false
+  },
+  {
+    "category": "api",
+    "description": "Share endpoints (POST/DELETE /api/notes/:id/share)",
+    "steps": [
+      "Add shareNote(userId, id) and unshareNote(userId, id) to notes-repo.ts (new token on every share, NULL on unshare)",
+      "POST returns { url } built with shareUrl(); DELETE returns 204",
+      "Owner-only with the same 401/404 rules as the notes API",
+      "Vitest tests: cross-user share/unshare → 404, old link 404 after unshare, reshare issues a new token"
+    ],
+    "passes": false
+  },
+  {
+    "category": "security",
+    "description": "Origin check and per-user rate limit on mutating note routes",
+    "steps": [
+      "POST/PATCH/DELETE under /api/notes reject a missing or mismatched Origin header with 403 (compare to BETTER_AUTH_URL origin)",
+      "In-memory per-user limiter, 60 mutations/min → 429 (single instance, SPEC §11.7)",
+      "Vitest tests for both"
+    ],
+    "passes": false
+  },
+  {
+    "category": "ui",
+    "description": "Autosave in the note editor (SPEC §5)",
+    "steps": [
+      "Edit page saves via PATCH /api/notes/:id with an 800 ms debounce after the last change, plus save on blur",
+      "Status indicator: Saving… / Saved / Error",
+      "No save on initial load; no overlapping requests (latest change wins)",
+      "Share on/off via the share endpoints instead of the form checkbox",
+      "Verify with Playwright MCP"
+    ],
+    "passes": false
+  },
+  {
+    "category": "ui",
+    "description": "Notes list route and home page",
+    "steps": [
+      "/notes is currently a placeholder: show the notes list there (or redirect to /dashboard) per SPEC pages",
+      "/ is still 'Hello World': redirect signed-in users to /dashboard and show a short intro with sign-in/sign-up links otherwise",
+      "Verify with Playwright MCP"
+    ],
+    "passes": false
+  },
+  {
+    "category": "security",
+    "description": "Rate limit the public share route per IP",
+    "steps": [
+      "In-memory per-IP limiter for /s/[token] to slow token guessing (SPEC §11.3, §11.7)",
+      "Over the limit → 429 without querying the database",
+      "Vitest test for the limiter"
+    ],
+    "passes": false
+  },
+  {
+    "category": "security",
+    "description": "Global HTTP security headers (SPEC §11.8)",
+    "steps": [
+      "Content-Security-Policy per SPEC (nonce-based script-src if Next.js needs it; read node_modules/next/dist/docs first)",
+      "X-Content-Type-Options nosniff, X-Frame-Options DENY, Referrer-Policy strict-origin-when-cross-origin (keep no-referrer on /s/*)",
+      "Strict-Transport-Security in production only; Permissions-Policy disabling camera, microphone, geolocation",
+      "Verify headers and that the editor still works under the CSP with Playwright MCP"
+    ],
+    "passes": false
+  },
+  {
+    "category": "security",
+    "description": "Log auth and authorization failures (SPEC §11.10)",
+    "steps": [
+      "Log failed sign-ins and 401/403/404-ownership denials with user id (if any), route, timestamp",
+      "Never log passwords, session tokens, share tokens or note content",
+      "Vitest test that sensitive values are not logged"
+    ],
+    "passes": false
+  },
+  {
+    "category": "testing",
+    "description": "Set up Playwright for E2E tests",
+    "steps": [
+      "Add @playwright/test; playwright.config.ts with webServer running the app against a throwaway DB_PATH",
+      "e2e/ directory with sign-up/login helpers",
+      "Add pnpm test:e2e script and document it in CLAUDE.md"
+    ],
+    "passes": false
+  },
+  {
+    "category": "testing",
+    "description": "E2E: auth and notes CRUD",
+    "steps": [
+      "Sign up, log out, wrong password shows generic error, log in",
+      "Create note with formatting, edit title/content, delete with confirmation",
+      "Signed-out access to protected pages redirects to /auth"
+    ],
+    "passes": false
+  },
+  {
+    "category": "testing",
+    "description": "E2E: sharing flow (SPEC §9, §11.11)",
+    "steps": [
+      "Register → create note → share → open public link signed out",
+      "Public page shows no user name or email",
+      "Stop sharing → old link returns 404; share again → new link works",
+      "Second user gets 404 on the first user's note"
+    ],
+    "passes": false
+  },
+  {
+    "category": "deployment",
+    "description": "Docker image for single-instance self-hosting (SPEC §8, §11.9)",
+    "steps": [
+      "Multi-stage Dockerfile: pnpm build, next start, non-root user",
+      "SQLite file on a mounted volume (DB_PATH=/data/app.db), never under public/",
+      "Required env vars BETTER_AUTH_SECRET, BETTER_AUTH_URL, DB_PATH documented",
+      "Document daily backup with sqlite3 .backup or VACUUM INTO"
+    ],
+    "passes": false
+  }
+]
